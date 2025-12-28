@@ -1,0 +1,12 @@
+expr: VAR int_op_expr
+expr: NUMBER int_op_expr
+expr: LAMBDA int_lambda
+expr: LPAREN int_paren
+expr: expr int_op_expr
+expr: VAR
+expr: NUMBER
+
+int_op_expr: OP expr
+int_lambda: VAR int_point_expr
+int_point_expr: POINT expr
+int_paren: expr RPAREN
