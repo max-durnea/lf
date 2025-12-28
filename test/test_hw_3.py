@@ -1248,16 +1248,25 @@ class HW3Tests(unittest.TestCase):
 			("abcbcbcaabaad dccbca", [("", "No viable alternative at character 10, line 0")]),
 			("d abdbc ccddabbbc", [("", "No viable alternative at character 4, line 0")]),
 			("d a\nbdbc ccddabbbc", [("", "No viable alternative at character 1, line 1")]),
-			("e abbbcbcaadc c", [("", "No viable alternative at character 0, line 0")]),  # this has a char not in the spec
-			("dccbcbcaaaa abbcf", [("", "No viable alternative at character 16, line 0")]),  # this has a char not in the spec
+			("e abbbcbcaadc c", [("", "No viable alternative at character 0, line 0")]),
+			("dccbcbcaaaa abbcf", [("", "No viable alternative at character 16, line 0")]),
 			("abbcaaabc dcccabcb", [("", "No viable alternative at character EOF, line 0")]),
 			("abbc\naaabc dcccabcb", [("", "No viable alternative at character EOF, line 1")]),
 			("dcdccaabcabb dcaabc", [("", "No viable alternative at character 11, line 0")]),
 			("\naaa\nbabbcbcbc abbbcaabc", [("", "No viable alternative at character 1, line 2")])
 		]
-
-		results = verify(lexer, tests)
-
-		print(f"test13: {results}")
+		
+		# ADD THIS DEBUG CODE HERE
+		for i, (input_str, expected) in enumerate(tests):
+			result = lexer.lex(input_str)
+			match = result == expected
+			print(f"Test {i}: {'PASS' if match else 'FAIL'}")
+			if not match:
+				print(f"  Input: {repr(input_str)}")
+				print(f"  Expected: {expected}")
+				print(f"  Got:      {result}")
+		# END DEBUG CODE
+		
+		results = [lexer.lex(test) == expected for test, expected in tests]
 		assert all(results)
 		self.__class__.score += 15

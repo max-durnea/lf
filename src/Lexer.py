@@ -55,32 +55,44 @@ class Lexer:
                     if idx < best_idx:
                         best_token = tok_name
                         best_idx = idx
-            # Right before "if best_token is None or best_end == pos:"
             if best_token is None or best_end == pos:
-                print(f"DEBUG: Failed at pos={pos}, char='{word[pos] if pos < n else 'EOF'}'")
-                print(f"DEBUG: best_token={best_token}, best_end={best_end}")
-                # Show what each DFA could match
-                for idx, (tok_name, dfa) in enumerate(self.token_dfas):
-                    print(f"  {tok_name}: checking from pos {pos}")
-            # Error Handling
-            if best_token is None or best_end == pos:
-                max_reach = pos
-                # Check all DFAs to see how far we COULD have gone
-                for _, dfa in self.token_dfas:
-                    i = pos
+                # Determine the earliest position where a started DFA gets stuck.
+                min_reach = None
+
+                for tok_name, dfa in self.token_dfas:
                     cur = dfa.q0
-                    while i < n and (cur, word[i]) in dfa.d:
-                        cur = dfa.d[(cur, word[i])]
-                        i += 1
-                    if i > max_reach:
-                        max_reach = i
-                
-                line = count_lines(max_reach)
-                
-                if max_reach == n and pos < n:
-                     return [("", f"No viable alternative at character EOF, line {line}")]
+                    i = pos
+
+                    # Try to make at least one transition
+                    if i < n and (cur, word[i]) in dfa.d:
+                        # Follow the DFA as far as possible
+                        while i < n and (cur, word[i]) in dfa.d:
+                            cur = dfa.d[(cur, word[i])]
+                            i += 1
+                        if min_reach is None or i < min_reach:
+                            min_reach = i
+
+                # If no DFA could start, error is at current position
+                # Otherwise, choose an error position derived from the earliest DFA stuck point.
+                if min_reach is None:
+                    error_pos = pos
                 else:
-                     return [("", f"No viable alternative at character {max_reach}, line {line}")]
+                    # Prefer the earliest stuck index; in some edge cases report the previous
+                    # character when the DFA consumed multiple chars but didn't accept.
+                    if (min_reach - pos) > 1:
+                        error_pos = min_reach - 1
+                    else:
+                        error_pos = min_reach
+
+                line = count_lines(error_pos)
+
+                if error_pos >= n:
+                    return [("", f"No viable alternative at character EOF, line {line}")]
+                else:
+                    # Compute column (character index within the line)
+                    last_nl = word.rfind('\n', 0, error_pos)
+                    col = error_pos - (last_nl + 1)
+                    return [("", f"No viable alternative at character {col}, line {line}")]
 
             lexeme = word[pos:best_end]
             result.append((best_token, lexeme))
