@@ -48,8 +48,8 @@ class Grammar:
                             R.add((non_terminal, symbol, None))
                     
                     # epsilon production: A -> ε (empty right side)
-                    elif len(symbols) == 0 and alt == EPSILON:
-                        R.add((non_terminal, EPSILON, None))
+                    #elif len(symbols) == 0 and alt == EPSILON:
+                    #    R.add((non_terminal, EPSILON, None))
 
         return cls(V, R, S)
 
@@ -77,23 +77,6 @@ class Grammar:
                     return ParseTree(self.S)
             return None
 
-        # helper function: apply unit productions (rules like A -> B where B is non-terminal)
-        # unit productions can chain (A -> B -> C -> D), so keep applying until nothing changes
-        def apply_unit_productions(cell):
-            changed = True
-            while changed:
-                changed = False
-                # check each rule to see if it's a unit production
-                for (A, B, C) in self.R:
-                    # unit production: C is None (not binary) and B is not epsilon
-                    if C is None and B != EPSILON:
-                        # if B is already in cell but A isn't, we can add A
-                        if B in cell and A not in cell:
-                            tree = ParseTree(A)
-                            tree.add_children(cell[B])
-                            cell[A] = tree
-                            changed = True
-
         # step 1: base case - fill diagonal of table for single tokens (substrings of length 1)
         # each single token can be derived by itself and possibly by rules like A -> TOKEN
         for i in range(1, n + 1):
@@ -110,9 +93,6 @@ class Grammar:
                         tree = ParseTree(A)
                         tree.add_children(ParseTree(token_type, token=(token_type, lexeme)))
                         table[i][i][A] = tree
-            
-            # third, apply unit productions in case any chain from this token
-            apply_unit_productions(table[i][i])
 
         # step 2: recursive case - fill table for longer substrings (length 2, 3, ..., n)
         # for each substring, try all ways to split it and combine using binary rules
@@ -142,9 +122,6 @@ class Grammar:
                                     tree.add_children(left_part[B])
                                     tree.add_children(right_part[C])
                                     table[start][end][A] = tree
-                
-                # after trying all splits, apply unit productions for this cell
-                apply_unit_productions(table[start][end])
 
         # step 3: check if parsing succeeded
         # if start symbol is in table[1][n], it can derive the entire input
