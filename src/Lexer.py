@@ -3,99 +3,143 @@ from .NFA import NFA, EPSILON
 
 class Lexer:
     def __init__(self, spec: list[tuple[str, str]]) -> None:
+        """
+        initialize lexer with token specifications
+        spec: list of (token_name, regex_string) pairs like [("NUMBER", "[0-9]+"), ("PLUS", "\\+")]
+        """
         self.spec = spec
-        AFNs = []
-        for token, regex_str in spec:
-            regex = parse_regex(regex_str)
-            afn = regex.thompson()
-            AFNs.append((token, afn))
-        self.AFNs = AFNs
         
+        # convert each regex pattern to a dfa (deterministic finite automaton)
+        # dfas are state machines that can efficiently check if text matches a pattern
         self.token_dfas = []
-        for token, afn in AFNs:
-            dfa = afn.subset_construction()
-            self.token_dfas.append((token, dfa))
+        for token_name, regex_string in spec:
+            # three-step conversion: regex string -> regex object -> nfa -> dfa
+            regex = parse_regex(regex_string)  # parse the regex string
+            nfa = regex.thompson()  # thompson's construction: regex -> nfa
+            dfa = nfa.subset_construction()  # subset construction: nfa -> dfa
+            self.token_dfas.append((token_name, dfa))
     
     def lex(self, word: str) -> list[tuple[str, str]]:
-        result = []
-        pos = 0
-        n = len(word)
+        """
+        tokenize input string using longest match principle (maximal munch)
+        returns list of (token_name, lexeme) pairs or error message in format [("", "error...")]
+        """
+        tokens = []
+        position = 0
+        input_length = len(word)
         
-        def count_lines(up_to_pos):
-            # Calculate lines (0-indexed)
-            return word[:up_to_pos].count('\n')
+        # main loop: process input character by character until we reach the end
+        while position < input_length:
+            
+            # step 1: try all token patterns at current position to find longest match
+            # we track: end position of match, which token matched, and its index for tie-breaking
+            longest_match_end = position  # how far the best match extends
+            longest_match_token = None  # which token type matched best
+            longest_match_index = None  # index in spec (for tie-breaking)
 
-        while pos < n:
-            best_idx = None
-            best_token = None
-            best_end = pos
-
-            # Find longest matching token
-            for idx, (tok_name, dfa) in enumerate(self.token_dfas):
-                cur = dfa.q0
-                i = pos
-                last_accept = None
+            # try each token's dfa to see which one matches longest
+            for token_index, (token_name, dfa) in enumerate(self.token_dfas):
+                current_state = dfa.q0  # start at dfa's initial state
+                current_pos = position  # start at current input position
+                last_accepting_pos = None  # tracks last position where dfa was in accepting state
                 
-                # Check for epsilon acceptance (length 0)
-                if cur in dfa.F:
-                    last_accept = i
+                # check if initial state is accepting (some patterns match empty string)
+                if current_state in dfa.F:
+                    last_accepting_pos = current_pos
 
-                while i < n and (cur, word[i]) in dfa.d:
-                    cur = dfa.d[(cur, word[i])]
-                    i += 1
-                    if cur in dfa.F:
-                        last_accept = i
+                # follow dfa transitions as far as possible by reading characters
+                while current_pos < input_length:
+                    char = word[current_pos]
+                    
+                    # check if transition exists for this character from current state
+                    # dfa.d is transition function: (state, character) -> next_state
+                    if (current_state, char) not in dfa.d:
+                        break  # no transition exists, dfa is stuck, stop here
+                    
+                    # transition exists, take it to move to next state
+                    current_state = dfa.d[(current_state, char)]
+                    current_pos += 1  # advance position in input
+                    
+                    # check if new state is accepting (dfa.F is set of accepting states)
+                    if current_state in dfa.F:
+                        last_accepting_pos = current_pos  # remember this as valid match point
                 
-                if last_accept is not None and last_accept > best_end:
-                    best_end = last_accept
-                    best_token = tok_name
-                    best_idx = idx
-                elif last_accept is not None and last_accept == best_end and best_token is not None:
-                    # Tie-break: prefer earlier definition
-                    if idx < best_idx:
-                        best_token = tok_name
-                        best_idx = idx
-            if best_token is None or best_end == pos:
-                # Determine the earliest position where a started DFA gets stuck.
-                min_reach = None
+                # update longest match if this token matched something
+                if last_accepting_pos is not None:
+                    # if this match is longer than current best, it wins
+                    if last_accepting_pos > longest_match_end:
+                        longest_match_end = last_accepting_pos
+                        longest_match_token = token_name
+                        longest_match_index = token_index
+                    # if same length as current best, tie-break: prefer earlier in spec
+                    elif last_accepting_pos == longest_match_end:
+                        if longest_match_token is not None and token_index < longest_match_index:
+                            longest_match_token = token_name
+                            longest_match_index = token_index
 
-                for tok_name, dfa in self.token_dfas:
-                    cur = dfa.q0
-                    i = pos
+            # step 2: check if any token matched
+            # if nothing matched or we didn't advance, we have a lexical error
+            if longest_match_token is None or longest_match_end == position:
+                error_position = self._find_error_position(word, position, input_length)
+                error_message = self._format_error_message(word, error_position, input_length)
+                return [("", error_message)]  # return error in format [("", "error message")]
 
-                    # Try to make at least one transition
-                    if i < n and (cur, word[i]) in dfa.d:
-                        # Follow the DFA as far as possible
-                        while i < n and (cur, word[i]) in dfa.d:
-                            cur = dfa.d[(cur, word[i])]
-                            i += 1
-                        if min_reach is None or i < min_reach:
-                            min_reach = i
+            # step 3: add matched token to result list
+            lexeme = word[position:longest_match_end]  # extract matched text
+            tokens.append((longest_match_token, lexeme))  # add (token_type, lexeme) pair
+            position = longest_match_end  # jump to end of matched token and continue
 
-                # If no DFA could start, error is at current position
-                # Otherwise, choose an error position derived from the earliest DFA stuck point.
-                if min_reach is None:
-                    error_pos = pos
-                else:
-                    # Prefer the earliest stuck index; in some edge cases report the previous
-                    # character when the DFA consumed multiple chars but didn't accept.
-                    if (min_reach - pos) > 1:
-                        error_pos = min_reach - 1
-                    else:
-                        error_pos = min_reach
+        return tokens
 
-                line = count_lines(error_pos)
+    def _find_error_position(self, word: str, position: int, input_length: int) -> int:
+        """
+        find where lexical error occurred by seeing where dfas got stuck
+        returns the earliest position where all dfas failed to continue
+        """
+        earliest_stuck_position = None
 
-                if error_pos >= n:
-                    return [("", f"No viable alternative at character EOF, line {line}")]
-                else:
-                    # Compute column (character index within the line)
-                    last_nl = word.rfind('\n', 0, error_pos)
-                    col = error_pos - (last_nl + 1)
-                    return [("", f"No viable alternative at character {col}, line {line}")]
+        # try each dfa to see how far it could go before getting stuck
+        for token_name, dfa in self.token_dfas:
+            current_state = dfa.q0
+            current_pos = position
 
-            lexeme = word[pos:best_end]
-            result.append((best_token, lexeme))
-            pos = best_end
+            # check if dfa can make at least one transition from current position
+            if current_pos < input_length and (current_state, word[current_pos]) in dfa.d:
+                # follow dfa as far as it can go (even if not accepting)
+                while current_pos < input_length and (current_state, word[current_pos]) in dfa.d:
+                    current_state = dfa.d[(current_state, word[current_pos])]
+                    current_pos += 1
+                
+                # track the earliest position where any dfa got stuck
+                if earliest_stuck_position is None or current_pos < earliest_stuck_position:
+                    earliest_stuck_position = current_pos
 
-        return result
+        # if no dfa could start (no transitions from initial state), error is at current position
+        if earliest_stuck_position is None:
+            return position
+        
+        # if dfa consumed multiple characters before getting stuck,
+        # report error at the previous character 
+        if (earliest_stuck_position - position) > 1:
+            return earliest_stuck_position - 1
+        else:
+            return earliest_stuck_position
+
+    def _format_error_message(self, word: str, error_position: int, input_length: int) -> str:
+        """
+        format error message with line and column numbers
+        format: "No viable alternative at character X, line Y" or "...at character EOF, line Y"
+        """
+        # count newlines before error position to get line number (0-indexed)
+        line_number = word[:error_position].count('\n')
+        
+        # special case: error at end of file
+        if error_position >= input_length:
+            return f"No viable alternative at character EOF, line {line_number}"
+        
+        # calculate column number: position within current line
+        # find last newline before error, column is distance from there
+        last_newline_pos = word.rfind('\n', 0, error_position)
+        column_number = error_position - (last_newline_pos + 1)
+        
+        return f"No viable alternative at character {column_number}, line {line_number}"
