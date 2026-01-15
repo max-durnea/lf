@@ -47,9 +47,9 @@ class Grammar:
                             V.add(symbol)
                             R.add((non_terminal, symbol, None))
                     
-                    # epsilon production: A -> ε (empty right side)
-                    #elif len(symbols) == 0 and alt == EPSILON:
-                    #    R.add((non_terminal, EPSILON, None))
+                    #epsilon production: A -> ε (empty right side)
+                    elif len(symbols) == 0 and alt == EPSILON:
+                        R.add((non_terminal, EPSILON, None))
 
         return cls(V, R, S)
 
