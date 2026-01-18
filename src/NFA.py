@@ -88,6 +88,7 @@ class NFA[STATE]:
                         unprocessed_states.append(sink_state)
         # the groups with final states will be the final groups
         for dfa_state in dfa_states:
+            # if any state in NFA final state is contained inside dfa_state then add it
             if any(s in self.F for s in dfa_state):
                 dfa_final_states.add(dfa_state)
         # return the new DFA

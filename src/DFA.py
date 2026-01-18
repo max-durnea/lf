@@ -88,14 +88,15 @@ class DFA[STATE]:
            # go through each state in block and assign the state to the index of the group
            for s in block:
                state_to_group[s] = i
-        # then call remap_states
+        # then call remap_states with the corresponding lambda function
        return self.remap_states(lambda s: state_to_group[s])
+    
         
     def remap_states[OTHER_STATE](self, f: Callable[[STATE], 'OTHER_STATE']) -> 'DFA[OTHER_STATE]':
         new_K = {f(s) for s in self.K}
         new_q0 = f(self.q0)
         new_F = {f(s) for s in self.F}
-        new_d={(f(s),c):f(nxt) for (s,c),nxt in self.d.items()}
+        new_d = {(f(s), c): f(nxt) for (s, c), nxt in self.d.items()}
         return DFA(S=self.S, K=new_K, q0=new_q0, d=new_d, F=new_F)
 
     
