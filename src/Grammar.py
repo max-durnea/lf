@@ -17,7 +17,7 @@ class Grammar:
                     continue
 
                 # split at colon: left side is non-terminal, right side is production
-                lhs, rhs = line.split(":", 1)
+                lhs,rhs = line.split(":",1)
                 non_terminal = lhs.strip()
                 V.add(non_terminal)
                 
@@ -26,20 +26,20 @@ class Grammar:
                     S = non_terminal
 
                 # handle alternatives separated by | (e.g., "A: B C|D E" means two rules)
-                alternatives = rhs.split("|")
+                alternatives = rhs.split('|')
                 for alt in alternatives:
                     alt = alt.strip()
                     symbols = alt.split()  # split by whitespace to get individual symbols
                     
                     # binary rule: A -> B C (exactly two symbols on right side)
-                    if len(symbols) == 2:
+                    if len(symbols)==2:
                         symbol1, symbol2 = symbols
                         V.add(symbol1)
                         V.add(symbol2)
-                        R.add((non_terminal, symbol1, symbol2))
+                        R.add((non_terminal,symbol1,symbol2))
                     
                     # unit or terminal rule: A -> B (exactly one symbol on right side)
-                    elif len(symbols) == 1:
+                    elif len(symbols)==1:
                         symbol = symbols[0]
                         if symbol == EPSILON:
                             R.add((non_terminal, EPSILON, None))
@@ -68,8 +68,7 @@ class Grammar:
         # create dp table where table[i][j] is a dictionary {non_terminal: ParseTree}
         # table[i][j] represents all non-terminals that can derive substring from position i to j
         # using 1-indexed positions, so table[1][n] represents the entire input
-        table = [[dict() for _ in range(n + 1)] for _ in range(n + 1)]
-
+        table = [[dict()for _ in range(0,n+1)]for _ in range(0,n+1)]
         # special case: if input is empty, check if grammar has S -> ε rule
         if n == 0:
             for (A, B, C) in self.R:
