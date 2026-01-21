@@ -26,7 +26,7 @@ class NFA[STATE]:
             # pop the first element
             current = stack.pop()
             # check all states that are reached from an epsilon transition from this state
-            for next_state in self.d.get((current,EPSILON),set()):
+            for next_state in self.d.get((current, EPSILON), set()):
                 # add it to the closure
                 closure.add(next_state)
                 # check if this state was already added and skip adding to the stack if it was
@@ -62,7 +62,7 @@ class NFA[STATE]:
                 # check the transitions for all states in the group and update next_states
                 next_states = set()
                 for nfa_state in current:
-                    next_states.update(self.d.get((nfa_state,symbol),set()))
+                    next_states.update(self.d.get((nfa_state, symbol), set()))
                 epsilon_closure_next = set()
                 # after that apply the epsilon closure on each added state
                 for ns in next_states:
@@ -76,12 +76,11 @@ class NFA[STATE]:
                     # if next_frozenset was not in the dfa states, add it and add it to unprocessed states
                     if next_frozenset not in dfa_states:
                         dfa_states.add(next_frozenset)
-
                         unprocessed_states.append(next_frozenset)
                 # If there is no transition from any element in current group on this symbol
                 else:
                     # update transitions on this symbol for this group to sink_state 
-                    dfa_transitions[(current,symbol)] = sink_state
+                    dfa_transitions[(current, symbol)] = sink_state
                     # add sink_state to the states, and append it to unprocessed_states
                     if not sink_needed:
                         sink_needed = True
@@ -102,13 +101,13 @@ class NFA[STATE]:
         )
 
     def remap_states[OTHER_STATE](self, f: 'Callable[[STATE], OTHER_STATE]') -> 'NFA[OTHER_STATE]':
-        new_K = {f(s)for s in self.K}
+        new_K = {f(s) for s in self.K}
         new_q0 = f(self.q0)
         new_F = {f(s) for s in self.F}
         new_d = {}
         # go through all transitions and remap states
         for (s, symbol), nxt_set in self.d.items():
             # create new next state set by applying f to each state in nxt_set and store in new_d
-            new_nxt_set={f(s) for s in nxt_set}
-            new_d[(f(s),symbol)]=new_nxt_set
+            new_nxt_set = {f(nxt_state) for nxt_state in nxt_set}
+            new_d[(f(s), symbol)] = new_nxt_set
         return NFA(S=self.S, K=new_K, q0=new_q0, d=new_d, F=new_F)

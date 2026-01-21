@@ -51,7 +51,6 @@ class Kleene(Regex):
         K=n.K | {q0,f}
         # return nfa with same alphabet, combined states, new start, modified transitions, new final
         return NFA(n.S,K,q0,d,{f})
-
 # optional operator class (zero or one occurrence)
 class Optional(Regex):
     # initialize with the inner regex to make optional
@@ -89,7 +88,7 @@ class Optional(Regex):
         # combine all states: inner states plus new start and final
         K=n.K | {q0,f}
         # return nfa with same alphabet, combined states, new start, modified transitions, new final
-        return NFA(n.S,n.K,q0,d,{f})
+        return NFA(n.S,K,q0,d,{f})
 # plus operator class (one or more repetitions)
 class Plus(Regex):
     # initialize with the inner regex to apply plus to
@@ -125,7 +124,7 @@ class Plus(Regex):
                 # add to existing epsilon transitions back to start and to final
                 d[(final,EPSILON)].update({n.q0,f})
         # combine all states: inner states plus new start and final
-        K= n.K | {f,q0}
+        K=n.K | {q0,f}
         # return nfa with same alphabet, combined states, new start, modified transitions, new final
         return NFA(n.S,K,q0,d,{f})
 # concatenation operator class (matches left then right)
@@ -193,7 +192,7 @@ class Union(Regex):
         # if epsilon transitions already exist from new start
         if (q0,EPSILON) in d:
             # add epsilon transitions to both left and right starts
-            d[(q0,EPSILON)].update({nl.q0,nr.q0})
+            d[(q0, EPSILON)].update({nl.q0, nr.q0})
         # if no epsilon transitions exist from new start
         else:
             # create epsilon transitions to both left and right starts
@@ -207,7 +206,7 @@ class Union(Regex):
             # if epsilon transitions already exist from this left final
             if (f, EPSILON) in d:
                 # add new final to existing epsilon transitions
-                d[(f,EPSILON)].update(F)
+                d[(f, EPSILON)].update(F)
             # if no epsilon transitions exist
             else:
                 # create epsilon transition to new final
@@ -231,7 +230,7 @@ class Union(Regex):
             # if transition doesn't exist
             else:
                 # copy transition from right nfa
-                d[k]=v.copy()
+                d[k] = v.copy()
         # combine alphabets from both nfas
         S = nl.S | nr.S
         # combine all states from both nfas plus new start and final
@@ -300,7 +299,7 @@ def parse_regex(s:str):
     # preprocess string to handle escape sequences and create token list
     processed = preprocess(s)
     # parse tokens starting with lowest precedence (union) from position 0
-    expr,pos = parse_union(processed,0)
+    expr, pos_final = parse_union(processed, 0)
     # return parsed regex tree
     return expr
 
@@ -323,7 +322,7 @@ def parse_concat(s:list, pos:int):
     # list to collect all consecutive terms to concatenate
     terms = []
     # keep parsing terms until we hit a delimiter (union, close paren, or end)
-    while pos<len(s) and not (s[pos][0] in "|)" and not s[pos][1]): 
+    while pos < len(s) and not (s[pos][0] in '|)' and not s[pos][1]):
         # parse each term using higher precedence function (postfix)
         term, pos = parse_postfix(s, pos)
         # add parsed term to list
@@ -364,7 +363,7 @@ def parse_postfix(s:list, pos:int):
 # parse base elements (highest precedence: characters, parentheses, character ranges)
 def parse_base(s:str, pos:int):
     # if reached end of input, return epsilon
-    if pos>=len(s):
+    if pos >= len(s):
         return Character(EPSILON), pos
     # get current character and whether it's escaped (literal)
     char, is_literal = s[pos]
@@ -373,9 +372,9 @@ def parse_base(s:str, pos:int):
         # skip past opening paren
         pos += 1
         # recursively parse inner expression starting from lowest precedence (union)
-        inner,pos=parse_union(s,pos)
+        inner, pos = parse_union(s, pos)
         # if closing paren exists and not escaped
-        if pos<len(s) and(s[pos][0]==')' and not s[pos][1]): 
+        if pos < len(s) and s[pos][0] == ')' and not s[pos][1]:
             # skip past closing paren
             pos += 1
         # return parsed subexpression
@@ -401,19 +400,19 @@ def parse_base(s:str, pos:int):
                 # skip past closing bracket
                 pos += 1
                 # generate list of all characters in range using ascii values
-                chars = [chr(c)for c in range(ord(start_char),ord(end_char)+1)]
+                chars = [chr(c) for c in range(ord(start_char), ord(end_char) + 1)]
                 # start with first character
                 result = Character(chars[0])
                 # union all remaining characters (a|b|c|d...)
                 for ch in chars[1:]:
-                    result=Union(result,Character(ch))
+                    result = Union(result, Character(ch))
                 # return union of all characters in range
                 return result, pos
     # if regular character (or escaped special character)
     # skip past current character
     pos += 1
     # return character node
-    return Character(char),pos
+    return Character(char), pos
 
 # preprocess regex string to handle escape sequences and create token list
 def preprocess(s:str):
@@ -441,7 +440,7 @@ def preprocess(s:str):
                 processed.append(('\\', True))  
             # for any other escaped character, treat as literal
             else:
-                processed.append((next_char,True))
+                processed.append((next_char, True))  
             # skip both backslash and escaped character
             i += 2
         # if space, skip it (spaces are ignored in regex)
@@ -450,9 +449,9 @@ def preprocess(s:str):
         # regular character, not escaped
         else:
             # add character with is_literal=False (can be operator)
-            processed.append((s[i],False))
+            processed.append((s[i], False))
             # move to next character
-            i+=1
+            i += 1
     # return list of processed tokens
     return processed
     

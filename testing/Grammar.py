@@ -17,7 +17,7 @@ class Grammar:
                     continue
 
                 # split at colon: left side is non-terminal, right side is production
-                lhs,rhs=line.split(':',1)
+                lhs,rhs = line.split(":",1)
                 non_terminal = lhs.strip()
                 V.add(non_terminal)
                 
@@ -47,7 +47,7 @@ class Grammar:
                             R.add((non_terminal, EPSILON, None))
                         else:
                             V.add(symbol)
-                            R.add((non_terminal,symbol,None))
+                            R.add((non_terminal, symbol, None))
                     
                     #epsilon production: A -> ε (empty right side)
                     elif len(symbols) == 0 and alt == EPSILON:
@@ -71,7 +71,7 @@ class Grammar:
         # create dp table where table[i][j] is a dictionary {non_terminal: ParseTree}
         # table[i][j] represents all non-terminals that can derive substring from position i to j
         # using 1-indexed positions, so table[1][n] represents the entire input
-        table = [[dict()for _ in range(n+1)]for _ in range(n+1)]
+        table = [[dict()for _ in range(0,n+1)]for _ in range(0,n+1)]
         # special case: if input is empty, check if grammar has S -> ε rule
         if n == 0:
             # go through all rules
@@ -81,14 +81,15 @@ class Grammar:
                     return ParseTree(self.S)
             return None
 
-        # step 1: base case - fill diagonal of table for single tokens (substrings of length 1) (1,n+1)
+        # step 1: base case - fill diagonal of table for single tokens (substrings of length 1)
         # each single token can be derived by itself and possibly by rules like A -> TOKEN
-        for i in range(1,n+1):
-            # get token at position i-1 (0-indexed in list) (n-1)
+        for i in range(1, n + 1):
+            # get token at position i-1 (0-indexed in list)
             token_type, lexeme = tokens[i - 1]  
             
             # first, add the token itself to the table so it can be referenced
-            table[i][i][token_type] = ParseTree(token_type,token=(token_type,lexeme))
+            table[i][i][token_type] = ParseTree(token_type, token=(token_type, lexeme))
+            
             # second, check for terminal productions: rules like "A -> TOKEN"
             # go through all rules
             for (A, B, C) in self.R:
@@ -97,14 +98,14 @@ class Grammar:
                     # if A not already in table, create parse tree for A and add token as child and add to table
                     if A not in table[i][i]:
                         tree = ParseTree(A)
-                        tree.add_children(ParseTree(token_type,token=(token_type,lexeme)))
+                        tree.add_children(ParseTree(token_type, token=(token_type, lexeme)))
                         table[i][i][A] = tree
 
         # step 2: recursive case - fill table for longer substrings (length 2, 3, ..., n)
-        # for each substring, try all ways to split it and combine using binary rules (2,n+1) (1,n-length+2)
+        # for each substring, try all ways to split it and combine using binary rules
         for length in range(2, n + 1):  # process substrings of increasing length
             for start in range(1, n - length + 2):  # try all starting positions
-                # calculate ending position for this substring = start+length-1
+                # calculate ending position for this substring
                 end = start + length - 1  
                 
                 # try every way to split substring [start, end] into two parts
@@ -117,7 +118,8 @@ class Grammar:
                         if C is not None:
                             # get what can derive the left and right parts
                             left_part = table[start][split]
-                            right_part = table[split+1][end]
+                            right_part = table[split + 1][end]
+                            
                             # core cyk logic: if B can derive left part AND C can derive right part,
                             # then A can derive the whole substring [start, end]
                             if B in left_part and C in right_part:
@@ -127,8 +129,7 @@ class Grammar:
                                     tree = ParseTree(A)
                                     tree.add_children(left_part[B])
                                     tree.add_children(right_part[C])
-        
-                                    table[start][end][A]=tree
+                                    table[start][end][A] = tree
 
         # step 3: check if parsing succeeded
         # if start symbol is in table[1][n], it can derive the entire input

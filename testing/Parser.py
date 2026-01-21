@@ -32,20 +32,23 @@ class Parser:
         # phase 1: lexical analysis
         # call lexer to tokenize input string into list of (token_type, lexeme) pairs
         tokens = self.lexer.lex(input_text)
+
         # check if lexer encountered an error during tokenization
         # lexer returns errors as a single-element list: [("", "error message")]
         # empty token type "" signals an error
-        if tokens and tokens[0][0]=="":
+        if tokens and tokens[0][0] == "":
             return tokens[0][1]  # return the error message string
 
         # phase 2: filter whitespace tokens
         # remove all space tokens because grammar rules don't include space as a terminal
         # list comprehension keeps only tokens where token_type is not "SPACE"
-        filtered_tokens=[token for token in tokens if token[0]!='SPACE']
+        filtered_tokens = [token for token in tokens if token[0] != "SPACE"]
+
         # phase 3: syntax analysis using cyk algorithm
         # grammar.cykParse() builds parse tree bottom-up from filtered tokens
         # returns ParseTree object if input matches grammar, None otherwise
         parse_tree = self.grammar.cykParse(filtered_tokens)
+
         # phase 4: return result based on whether parsing succeeded
         if parse_tree:
             # parsing succeeded: convert parse tree to formatted string

@@ -16,9 +16,8 @@ class Lexer:
             # three-step conversion: regex string -> regex object -> nfa -> dfa
             regex = parse_regex(regex_string)  # parse the regex string
             nfa = regex.thompson()  # thompson's construction: regex -> nfa
-            # subset construction: nfa -> dfa
-            dfa=nfa.subset_construction()
-            self.token_dfas.append((token_name,dfa))
+            dfa = nfa.subset_construction()  # subset construction: nfa -> dfa
+            self.token_dfas.append((token_name, dfa))
     
     def lex(self, word: str) -> list[tuple[str, str]]:
         """
@@ -39,7 +38,7 @@ class Lexer:
             longest_match_index = None  # index in spec (for tie-breaking)
 
             # try each token's dfa to see which one matches longest
-            for token_index,(token_name,dfa)in enumerate(self.token_dfas):
+            for token_index, (token_name, dfa) in enumerate(self.token_dfas):
                 current_state = dfa.q0  # start at dfa's initial state
                 # start at current input position
                 current_pos = position  
@@ -47,10 +46,10 @@ class Lexer:
                 
                 # check if initial state is accepting (some patterns match empty string)
                 if current_state in dfa.F:
-                    last_accepting_pos=current_pos
+                    last_accepting_pos = current_pos
 
                 # follow dfa transitions as far as possible by reading characters
-                while current_pos<input_length:
+                while current_pos < input_length:
                     char = word[current_pos]
                     
                     # check if transition exists for this character from current state
@@ -76,15 +75,15 @@ class Lexer:
                     # if same length as current best, tie-break: prefer earlier in spec
                     elif last_accepting_pos == longest_match_end:
                         # if already have a match, check index for tie-breaking
-                        if longest_match_token is not None and token_index<longest_match_index:
+                        if longest_match_token is not None and token_index < longest_match_index:
                             longest_match_token = token_name
                             longest_match_index = token_index
 
             # step 2: check if any token matched
             # if nothing matched or we didn't advance, meaning none of the NFA accepted, we have a lexical error
-            if longest_match_token is None or longest_match_end==position:
+            if longest_match_token is None or longest_match_end == position:
                 error_position = self._find_error_position(word, position, input_length)
-                error_message = self._format_error_message(word,error_position,input_length)
+                error_message = self._format_error_message(word, error_position, input_length)
                 return [("", error_message)]  # return error in format [("", "error message")]
 
             # step 3: add matched token to result list
@@ -108,14 +107,14 @@ class Lexer:
             current_pos = position
 
             # check if dfa can make at least one transition from current position
-            if current_pos<input_length and (current_state,word[current_pos]) in dfa.d:
+            if current_pos < input_length and (current_state, word[current_pos]) in dfa.d:
                 # follow dfa as far as it can go (even if not accepting)
-                while current_pos<input_length and (current_state,word[current_pos]) in dfa.d:
-                    current_state=dfa.d[(current_state,word[current_pos])]
+                while current_pos < input_length and (current_state, word[current_pos]) in dfa.d:
+                    current_state = dfa.d[(current_state, word[current_pos])]
                     current_pos += 1
                 
                 # track the earliest position where any dfa got stuck
-                if earliest_stuck_position is None or current_pos<earliest_stuck_position:
+                if earliest_stuck_position is None or current_pos < earliest_stuck_position:
                     earliest_stuck_position = current_pos
 
         # if no dfa could start (no transitions from initial state), error is at current position
@@ -124,7 +123,7 @@ class Lexer:
         # 1/0 1 fo
         # if dfa consumed multiple characters before getting stuck,
         # report error at the previous character 
-        if earliest_stuck_position-position>1:
+        if (earliest_stuck_position - position) > 1:
             return earliest_stuck_position - 1
         # otherwise, report error at the stuck position
         else:
@@ -143,7 +142,7 @@ class Lexer:
         
         # calculate column number: position within current line
         # find last newline before error, column is distance from there
-        last_newline_pos=word.rfind("\n",0,error_position)
-        column_number = error_position-(last_newline_pos+1)
+        last_newline_pos = word.rfind('\n', 0, error_position)
+        column_number = error_position - (last_newline_pos + 1)
         
         return f"No viable alternative at character {column_number}, line {line_number}"

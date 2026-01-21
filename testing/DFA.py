@@ -23,10 +23,10 @@ class DFA[STATE]:
             # extract character and rest of the word
             a, word = word[0], word[1:]
             # if there is no transition from the current state and character return false
-            if (final_state,a) not in self.d:
+            if((final_state, a) not in self.d):
                 return False
             # make the transition
-            final_state=self.d[(final_state,a)]
+            final_state = self.d[(final_state, a)]
         return final_state in self.F
 
     def minimize(self) -> 'DFA[STATE]':
@@ -38,7 +38,7 @@ class DFA[STATE]:
            W = []
            P = []
        # non final states is the difference between all states and the final ones
-       non_final = self.K-self.F
+       non_final = self.K - self.F
        # add the non_final states to both lists
        if non_final:
            W.append(set(non_final))
@@ -49,7 +49,7 @@ class DFA[STATE]:
            Q = W.pop()
            # for all characters in the alphabet
            for c in self.S:
-               # X is the set of all states that have a transition on char c in partition Q s K,d
+               # X is the set of all states that have a transition on char c in partition Q
                X = set()
                for s in self.K:
                    if self.d.get((s,c),None) in Q:
@@ -72,7 +72,7 @@ class DFA[STATE]:
                        if R in W:
                            new_W.append(R1)
                            new_W.append(R2)
-                       elif len(R1)<len(R2):
+                       elif len(R1)<=len(R2):
                            new_W.append(R1)
                        else:
                            new_W.append(R2)
@@ -84,12 +84,12 @@ class DFA[STATE]:
         # After creating the partitions, create the new minimized DFA
        state_to_group = {}
        # For all blocks and their index
-       for i,block in enumerate(P):
+       for i, block in enumerate(P):
            # go through each state in block and assign the state to the index of the group
            for s in block:
-               state_to_group[s]=i
+               state_to_group[s] = i
         # then call remap_states with the corresponding lambda function
-       return self.remap_states(lambda s:state_to_group[s])
+       return self.remap_states(lambda s: state_to_group[s])
     
         
     def remap_states[OTHER_STATE](self, f: Callable[[STATE], 'OTHER_STATE']) -> 'DFA[OTHER_STATE]':
@@ -97,8 +97,8 @@ class DFA[STATE]:
         new_q0 = f(self.q0)
         new_F = {f(s) for s in self.F}
         # new dictionary is of form (f(s),c): f(nxt)
-        new_d={(f(s),c):f(nxt) for (s,c),nxt in self.d.items()}
-        return DFA(self.S,new_K,new_q0,new_d,new_F)
+        new_d = {(f(s), c): f(nxt) for (s, c), nxt in self.d.items()}
+        return DFA(S=self.S, K=new_K, q0=new_q0, d=new_d, F=new_F)
 
     
     

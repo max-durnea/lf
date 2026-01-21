@@ -49,7 +49,7 @@ class ParseTree:
         if self.name.startswith("int_"):
             result = ""
             for child in self.children:
-                result+="\n"+child.to_string(indent_level)
+                result += "\n"+child.to_string(indent_level)
             return result[1:]
         
         # subcase 2c: regular non-terminal node
@@ -61,4 +61,4 @@ class ParseTree:
 
     def __str__(self):
         """string representation: calls to_string() starting at indent level 0"""
-        return self.to_string(indent_level=0)
+        return self.to_string()
